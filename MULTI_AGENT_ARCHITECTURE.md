@@ -1,5 +1,70 @@
 # Multi-Agent System Architecture
 
+## 🎯 No-Code Agent Builder Architecture
+
+This system works exactly like **Voiceflow, Botpress, or other no-code agent platforms**:
+
+1. **You write prompts/config** → System builds agents automatically
+2. **Root Agent** → Controls flow (user never sees this)
+3. **Lead Agent** → Collects data (user-facing)
+4. **Summary Agent** → Generates output (backend)
+5. **Airtable** → Stores data via REST API
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                       NO-CODE AGENT BUILDER                         │
+│                                                                     │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │  agent_config.py - YOU EDIT THIS TO CHANGE BEHAVIOR          │  │
+│   │  ├── ROOT_AGENT_PROMPT    → How system navigates             │  │
+│   │  ├── LEAD_AGENT_PROMPT    → How to collect data              │  │
+│   │  ├── SUMMARY_AGENT_PROMPT → How to generate output           │  │
+│   │  ├── REQUIRED_FIELDS      → What data to collect             │  │
+│   │  └── AIRTABLE_FIELD_MAPPING → How to store in Airtable       │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│                                ↓                                    │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │                    AGENT SYSTEM                              │  │
+│   │                                                              │  │
+│   │  ROOT AGENT ──→ LEAD AGENT ──→ SUMMARY AGENT ──→ AIRTABLE    │  │
+│   │  (Router)       (Collector)    (Generator)       (Storage)   │  │
+│   │                                                              │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│                                ↓                                    │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │  USER sees: Natural conversation, no complexity exposed      │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## 🚀 Quick Start - Modify agent_config.py
+
+### Change what data to collect:
+```python
+REQUIRED_FIELDS = ["name", "email", "mobile"]
+OPTIONAL_FIELDS = ["age", "city", "company"]  # Add new field
+```
+
+### Change how agents behave:
+```python
+ROOT_AGENT_PROMPT = """
+Your custom instructions for how the system flows...
+"""
+
+LEAD_AGENT_PROMPT = """
+Your custom personality for collecting data...
+"""
+```
+
+### Change Airtable mapping:
+```python
+AIRTABLE_FIELD_MAPPING = {
+    "name": "Full Name",      # Maps to your Airtable column
+    "email": "Email Address",
+    "company": "Company Name",  # New field
+}
+```
+
 ## System Overview
 
 ```
@@ -201,12 +266,71 @@ ROOT: User confirmed → Route to Summary Agent
 SUMMARY: 🎯 Validate profile ✓
 SUMMARY: 🎯 Call LLM...
 SUMMARY: 🎯 Generated: "Meet John Doe, a 30-year-old..."
+SUMMARY: 🎯 Saving to Airtable...
+SUMMARY: 🎯 ✓ Data saved! Record ID: rec123...
 
 ROOT: Summary complete → Finalize
 ROOT: Show to user: "✅ Profile Saved! [summary]"
 
 System: COMPLETED
 ```
+
+## Airtable Integration
+
+This is how **no-code agent builders** work - they collect data through conversation and store it via REST API.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DATA FLOW                                    │
+│                                                                 │
+│  User ──→ Lead Agent ──→ Summary Agent ──→ Airtable            │
+│   │         │               │                │                  │
+│   │      Collects        Generates         REST API             │
+│   │       data           summary           POST                 │
+│   │                         │                │                  │
+│   └─────────────────────────┴────────────────┘                 │
+│                                                                 │
+│   User never sees the complexity!                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Setting up Airtable
+
+1. **Create Airtable Account**: Go to [airtable.com](https://airtable.com)
+
+2. **Create a Base**: Create a new base called "Leads"
+
+3. **Create Table Columns**:
+   | Column Name | Field Type |
+   |-------------|------------|
+   | Name | Single line text |
+   | Email | Email |
+   | Mobile | Phone number |
+   | Age | Single line text |
+   | City | Single line text |
+   | Summary | Long text |
+   | Created At | Date time |
+   | Status | Single select |
+
+4. **Get API Key**: Go to [airtable.com/create/tokens](https://airtable.com/create/tokens)
+   - Create a new token with `data.records:read` and `data.records:write` scopes
+
+5. **Get Base ID**: Open your base, look at the URL: `airtable.com/BASEID/...`
+
+6. **Configure Environment**:
+   ```bash
+   # Add to .env file
+   AIRTABLE_API_KEY=pat_your_token_here
+   AIRTABLE_BASE_ID=appYourBaseId
+   AIRTABLE_TABLE_NAME=Leads
+   ```
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/airtable/status` | GET | Check Airtable configuration |
+| `/api/airtable/leads` | GET | Get all leads from Airtable |
 
 ## Key Features
 
@@ -216,6 +340,7 @@ System: COMPLETED
 ✅ **Stateful Workflow**: Checkpointer maintains conversation
 ✅ **Flexible Routing**: Root Agent handles all decisions
 ✅ **LLM-Powered**: Natural language understanding throughout
+✅ **Airtable Integration**: Automatic data storage via REST API
 
 ## Run the System
 
@@ -232,3 +357,4 @@ python3 multi_agent_cli.py
 4. `summary_agent.py` - Summary generation agent
 5. `multi_agent_graph.py` - Graph builder
 6. `multi_agent_cli.py` - CLI interface
+7. `airtable_service.py` - Airtable REST API integration

@@ -36,3 +36,6 @@ class MultiAgentState(TypedDict):
     summary_text: Optional[str]
     summary_status: Literal["pending", "processing", "completed", "failed"]
     summary_error: Optional[str]
+    
+    # === AIRTABLE INTEGRATION ===
+    airtable_record_id: Optional[str]  # ID of saved record in Airtable

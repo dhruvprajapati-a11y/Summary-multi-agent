@@ -1,5 +1,10 @@
 """
 Summary Agent - Backend agent that generates summaries (no user interaction)
+
+This is how no-code agent builders work:
+1. Lead Agent collects data (no routing, no decisions)
+2. Summary Agent generates summary AND saves to Airtable
+3. User never sees the complexity - just the conversation
 """
 from __future__ import annotations
 from typing import Dict, Any
@@ -7,6 +12,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from multi_agent_state import MultiAgentState
 from prompts import SUMMARY_SYSTEM
+from airtable_service import save_lead_to_airtable
 import time
 
 def _llm(model: str = "gpt-4o-mini", temperature: float = 0.7) -> ChatOpenAI:
@@ -63,11 +69,24 @@ def summary_validate_and_generate(state: MultiAgentState) -> Dict[str, Any]:
             print(f"🎯 SUMMARY AGENT - ✓ Summary generated in {elapsed:.2f}s")
             print(f"🎯 SUMMARY AGENT - Summary preview: {summary[:100]}...")
             
+            # === SAVE TO AIRTABLE ===
+            # This is where no-code builders store data via REST API
+            # User never sees this - it's all backend magic
+            airtable_result = save_lead_to_airtable(profile, summary)
+            
+            if airtable_result["success"]:
+                print(f"🎯 SUMMARY AGENT - ✓ Data saved to Airtable!")
+                airtable_record_id = airtable_result.get("record_id")
+            else:
+                print(f"🎯 SUMMARY AGENT - ⚠️ Airtable save failed: {airtable_result.get('error')}")
+                airtable_record_id = None
+            
             return {
                 "summary_text": summary,
                 "summary_status": "completed",
                 "status": "completed",
                 "current_agent": "summary",
+                "airtable_record_id": airtable_record_id,
             }
         
         except Exception as e:
@@ -78,12 +97,17 @@ def summary_validate_and_generate(state: MultiAgentState) -> Dict[str, Any]:
                 print("🎯 SUMMARY AGENT - Using fallback template")
                 fallback = _generate_fallback_summary(profile)
                 
+                # Still save to Airtable even with fallback summary
+                airtable_result = save_lead_to_airtable(profile, fallback)
+                airtable_record_id = airtable_result.get("record_id") if airtable_result["success"] else None
+                
                 return {
                     "summary_text": fallback,
                     "summary_status": "completed",
                     "status": "completed",
                     "current_agent": "summary",
                     "summary_error": f"Used fallback due to: {str(e)}",
+                    "airtable_record_id": airtable_record_id,
                 }
             
             # Wait before retry

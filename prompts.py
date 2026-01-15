@@ -1,6 +1,18 @@
 from __future__ import annotations
 
-LEAD_SYSTEM = """You are the Lead Intake Agent.
+# ==========================================
+# PROMPTS - Now loaded from agent_config.py
+# ==========================================
+# This file provides backward compatibility
+# All prompts are now configurable in agent_config.py
+
+try:
+    from agent_config import LEAD_AGENT_PROMPT, SUMMARY_AGENT_PROMPT
+    LEAD_SYSTEM = LEAD_AGENT_PROMPT
+    SUMMARY_SYSTEM = SUMMARY_AGENT_PROMPT
+except ImportError:
+    # Fallback to default prompts if agent_config.py doesn't exist
+    LEAD_SYSTEM = """You are the Lead Intake Agent.
 Goal: collect the user's details: name, email, mobile, age, city.
 Rules:
 - Ask one question at a time.
@@ -12,7 +24,7 @@ Rules:
 - After collecting all required fields, summarize and ask for confirmation.
 """
 
-SUMMARY_SYSTEM = """You are a professional Summary Agent working in the backend.
+    SUMMARY_SYSTEM = """You are a professional Summary Agent working in the backend.
 
 Your Role:
 - You receive validated lead profile data

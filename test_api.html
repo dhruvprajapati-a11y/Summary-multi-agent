@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Lead Collection - Streaming Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .status-init {
+            background: #ffeaa7;
+            color: #2d3436;
+        }
+
+        .status-collecting {
+            background: #74b9ff;
+            color: #2d3436;
+        }
+
+        .status-confirming {
+            background: #a29bfe;
+            color: white;
+        }
+
+        .status-completed {
+            background: #55efc4;
+            color: #2d3436;
+        }
+
+        .chat-container {
+            height: 500px;
+            overflow-y: auto;
+            padding: 30px;
+            background: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.agent {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.user {
+            display: flex;
+            align-items: flex-start;
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .agent .avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin-right: 12px;
+        }
+
+        .user .avatar {
+            background: #2d3436;
+            margin-left: 12px;
+        }
+
+        .bubble {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            word-wrap: break-word;
+        }
+
+        .agent .bubble {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .user .bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .input-container {
+            padding: 20px 30px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-container input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input-container input:focus {
+            border-color: #667eea;
+        }
+
+        .input-container button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .input-container button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .input-container button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: fit-content;
+        }
+
+        .typing-indicator.active {
+            display: flex;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        .profile-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .profile-field {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .profile-field:last-child {
+            border-bottom: none;
+        }
+
+        .profile-field strong {
+            color: #2d3436;
+        }
+
+        .profile-field span {
+            color: #636e72;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Multi-Agent Lead Collection</h1>
+            <p>Powered by LangGraph & OpenAI GPT-4</p>
+        </div>
+
+        <div class="status-bar">
+            <div>
+                <strong>Session:</strong> <span id="sessionId">Not started</span>
+            </div>
+            <div>
+                <span class="status-badge status-init" id="statusBadge">READY</span>
+            </div>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="message agent">
+                <div class="avatar">🤖</div>
+                <div class="bubble">
+                    Welcome! Click "Start Session" to begin collecting your information.
+                </div>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <input type="text" id="userInput" placeholder="Type your message..." disabled>
+            <button id="sendBtn" onclick="startSession()">Start Session</button>
+        </div>
+    </div>
+
+    <script>
+        let threadId = null;
+        let isProcessing = false;
+        let eventSource = null;
+
+        const API_URL = 'http://localhost:8000';
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const sessionIdEl = document.getElementById('sessionId');
+        const statusBadge = document.getElementById('statusBadge');
+
+        async function startSession() {
+            try {
+                sendBtn.disabled = true;
+                sendBtn.textContent = 'Starting...';
+
+                const response = await fetch(`${API_URL}/api/session/start`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                threadId = data.thread_id;
+                sessionIdEl.textContent = threadId.substring(0, 8) + '...';
+
+                // Add agent message
+                addMessage(data.message, 'agent');
+
+                // Enable input
+                userInput.disabled = false;
+                userInput.focus();
+                sendBtn.textContent = 'Send';
+                sendBtn.onclick = sendMessage;
+
+                updateStatus('collecting');
+            } catch (error) {
+                console.error('Error starting session:', error);
+                addMessage('Error starting session. Please try again.', 'agent');
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Start Session';
+            }
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message || isProcessing) return;
+
+            // Add user message
+            addMessage(message, 'user');
+            userInput.value = '';
+
+            // Show typing indicator
+            const typingDiv = showTyping();
+
+            isProcessing = true;
+            sendBtn.disabled = true;
+            userInput.disabled = true;
+
+            try {
+                // Use streaming endpoint
+                eventSource = new EventSource(`${API_URL}/api/chat/stream?thread_id=${threadId}&message=${encodeURIComponent(message)}`);
+
+                let currentMessage = '';
+                let messageDiv = null;
+
+                eventSource.addEventListener('message', (event) => {
+                    const data = JSON.parse(event.data);
+
+                    if (!messageDiv) {
+                        hideTyping(typingDiv);
+                        messageDiv = createMessageElement('', 'agent');
+                        chatContainer.appendChild(messageDiv);
+                    }
+
+                    currentMessage = data.content;
+                    const bubble = messageDiv.querySelector('.bubble');
+                    bubble.textContent = currentMessage;
+                    scrollToBottom();
+                });
+
+                eventSource.addEventListener('status', (event) => {
+                    const data = JSON.parse(event.data);
+                    updateStatus(data.status);
+                });
+
+                eventSource.addEventListener('profile', (event) => {
+                    const profile = JSON.parse(event.data);
+                    updateProfile(profile);
+                });
+
+                eventSource.addEventListener('complete', (event) => {
+                    eventSource.close();
+                    isProcessing = false;
+                    sendBtn.disabled = false;
+                    userInput.disabled = false;
+                    userInput.focus();
+                });
+
+                eventSource.addEventListener('error', (event) => {
+                    console.error('SSE Error:', event);
+                    eventSource.close();
+                    hideTyping(typingDiv);
+                    isProcessing = false;
+                    sendBtn.disabled = false;
+                    userInput.disabled = false;
+                });
+
+            } catch (error) {
+                console.error('Error sending message:', error);
+                hideTyping(typingDiv);
+                addMessage('Error sending message. Please try again.', 'agent');
+                isProcessing = false;
+                sendBtn.disabled = false;
+                userInput.disabled = false;
+            }
+        }
+
+        function addMessage(text, type) {
+            const messageDiv = createMessageElement(text, type);
+            chatContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function createMessageElement(text, type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = `
+                <div class="avatar">${type === 'agent' ? '🤖' : '👤'}</div>
+                <div class="bubble">${text}</div>
+            `;
+            return div;
+        }
+
+        function showTyping() {
+            const div = document.createElement('div');
+            div.className = 'message agent';
+            div.innerHTML = `
+                <div class="avatar">🤖</div>
+                <div class="typing-indicator active">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            scrollToBottom();
+            return div;
+        }
+
+        function hideTyping(typingDiv) {
+            if (typingDiv && typingDiv.parentNode) {
+                typingDiv.remove();
+            }
+        }
+
+        function updateStatus(status) {
+            statusBadge.className = 'status-badge status-' + status;
+            statusBadge.textContent = status.toUpperCase();
+        }
+
+        function updateProfile(profile) {
+            // Find or create profile card
+            let profileCard = document.querySelector('.profile-card');
+            if (!profileCard) {
+                profileCard = document.createElement('div');
+                profileCard.className = 'profile-card';
+                profileCard.innerHTML = '<h3>📋 Collected Information</h3>';
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message agent';
+                messageDiv.innerHTML = `<div class="avatar">🤖</div>`;
+                messageDiv.appendChild(profileCard);
+                chatContainer.appendChild(messageDiv);
+            }
+
+            // Update fields
+            const fields = ['name', 'email', 'mobile', 'age', 'city'];
+            profileCard.innerHTML = '<h3>📋 Collected Information</h3>';
+
+            fields.forEach(field => {
+                if (profile[field]) {
+                    const fieldDiv = document.createElement('div');
+                    fieldDiv.className = 'profile-field';
+                    fieldDiv.innerHTML = `
+                        <strong>${field.charAt(0).toUpperCase() + field.slice(1)}:</strong>
+                        <span>${profile[field]}</span>
+                    `;
+                    profileCard.appendChild(fieldDiv);
+                }
+            });
+
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Handle Enter key
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !isProcessing) {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+
+</html>

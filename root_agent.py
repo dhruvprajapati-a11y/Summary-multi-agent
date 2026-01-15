@@ -31,6 +31,7 @@ def root_init(state: MultiAgentState) -> Dict[str, Any]:
         "summary_text": None,
         "summary_status": "pending",
         "summary_error": None,
+        "airtable_record_id": None,
     }
 
 def root_router(state: MultiAgentState) -> str:
@@ -95,11 +96,21 @@ def root_finalize(state: MultiAgentState) -> Dict[str, Any]:
     print("\n🤖 ROOT AGENT - Finalizing and presenting summary to user")
     
     summary = state.get("summary_text", "No summary available")
+    airtable_record_id = state.get("airtable_record_id")
+    
+    # Build final message - user sees a clean response
+    # They don't see the complexity of agents or API calls
+    if airtable_record_id:
+        storage_status = "✅ Your information has been securely saved."
+    else:
+        storage_status = "📋 Your information has been recorded."
     
     final_message = AIMessage(content=f"""
 ✅ **Profile Saved Successfully!**
 
 {summary}
+
+{storage_status}
 
 Thank you for providing your information!
 """)
